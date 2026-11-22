@@ -1,3 +1,4 @@
+
 /* Configurez ces deux valeurs après avoir créé votre projet Supabase. */
 const SUPABASE_URL = "https://jbpvjcjdbfiaeyfyjlnz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qP2j0XgSeZOjaYytKSWVXg_Qp89T4DZ";
@@ -25,8 +26,8 @@ async function loadSession(){
 }
 function updateHeader(){
   $("session-label").textContent=currentProfile?.nickname ? `${currentProfile.nickname}${isAdmin()?" · Admin":""}` : "Visiteur";
-  $("login-open").classList.toggle("hidden",!!currentUser);
-  $("logout").classList.toggle("hidden",!currentUser);
+  $("login-open").classList.toggle("hidden",isMember());
+  $("logout").classList.toggle("hidden",!isMember());
 }
 function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin())}
 
@@ -40,12 +41,12 @@ async function loadArticles(){
   const all=comments||[];
   $("articles").innerHTML=articleCache.map(a=>{
     const roots=all.filter(c=>c.article_id===a.id&&!c.parent_id);
-    return `<article class="article-card" id="article-${a.id}"><div class="article-layout"><div><div class="article-number">ARTICLE ${esc(a.number)}</div><h2>${esc(a.title)}</h2><div class="article-body">${esc(a.body)}</div>${isAdmin()?`<details class="admin-form"><summary class="text-button">Modifier cet article</summary><label>Titre</label><input id="title-${a.id}" value="${esc(a.title)}"><label>Texte</label><textarea id="body-${a.id}" rows="4">${esc(a.body)}</textarea><button class="button button-primary small-button" onclick="saveArticle('${a.id}')">Enregistrer</button></details>`:""}</div><aside class="comment-rail"><div class="comment-head"><span>COMMENTAIRES</span><span class="comment-count">${roots.length}</span></div><div>${roots.map(c=>commentHTML(c,all)).join("")||'<p class="empty">Aucun commentaire pour le moment.</p>'}</div>${currentUser?`<form class="comment-form" onsubmit="addComment(event,'${a.id}')"><textarea id="new-comment-${a.id}" rows="2" maxlength="2000" required placeholder="Votre remarque sur cet article…"></textarea><button class="button button-primary small-button">Commenter</button></form>`:'<p class="muted">Connectez-vous pour commenter.</p>'}</aside></div></article>`;
+    return `<article class="article-card" id="article-${a.id}"><div class="article-layout"><div><div class="article-number">ARTICLE ${esc(a.number)}</div><h2>${esc(a.title)}</h2><div class="article-body">${esc(a.body)}</div>${isAdmin()?`<details class="admin-form"><summary class="text-button">Modifier cet article</summary><label>Titre</label><input id="title-${a.id}" value="${esc(a.title)}"><label>Texte</label><textarea id="body-${a.id}" rows="4">${esc(a.body)}</textarea><button class="button button-primary small-button" onclick="saveArticle('${a.id}')">Enregistrer</button></details>`:""}</div><aside class="comment-rail"><div class="comment-head"><span>COMMENTAIRES</span><span class="comment-count">${roots.length}</span></div><div>${roots.map(c=>commentHTML(c,all)).join("")||'<p class="empty">Aucun commentaire pour le moment.</p>'}</div>${isMember()?`<form class="comment-form" onsubmit="addComment(event,'${a.id}')"><textarea id="new-comment-${a.id}" rows="2" maxlength="2000" required placeholder="Votre remarque sur cet article…"></textarea><button class="button button-primary small-button">Commenter</button></form>`:'<p class="muted">Connectez-vous pour commenter.</p>'}</aside></div></article>`;
   }).join("");
 }
 function commentHTML(c,all){
   const replies=all.filter(r=>r.parent_id===c.id);
-  return `<div class="comment"><div><span class="comment-author">${esc(c.author_name)}</span><span class="comment-date">${dateLabel(c.created_at)}</span></div><div class="comment-text">${esc(c.body)}</div>${currentUser?`<div class="comment-actions"><button class="text-button" onclick="showReply('${c.id}')">Répondre</button>${isAdmin()?`<button class="text-button" onclick="deleteComment('${c.id}')">Supprimer</button>`:""}</div><form id="reply-form-${c.id}" class="comment-form hidden" onsubmit="addReply(event,'${c.article_id}','${c.id}')"><textarea id="reply-text-${c.id}" rows="2" maxlength="2000" required placeholder="Votre réponse…"></textarea><button class="button button-primary small-button">Envoyer</button></form>`:""}${replies.map(r=>`<div class="reply"><div class="comment-author">${esc(r.author_name)}</div><div class="comment-text">${esc(r.body)}</div>${isAdmin()?`<button class="text-button" onclick="deleteComment('${r.id}')">Supprimer</button>`:""}</div>`).join("")}</div>`;
+  return `<div class="comment"><div><span class="comment-author">${esc(c.author_name)}</span><span class="comment-date">${dateLabel(c.created_at)}</span></div><div class="comment-text">${esc(c.body)}</div>${isMember()?`<div class="comment-actions"><button class="text-button" onclick="showReply('${c.id}')">Répondre</button>${isAdmin()?`<button class="text-button" onclick="deleteComment('${c.id}')">Supprimer</button>`:""}</div><form id="reply-form-${c.id}" class="comment-form hidden" onsubmit="addReply(event,'${c.article_id}','${c.id}')"><textarea id="reply-text-${c.id}" rows="2" maxlength="2000" required placeholder="Votre réponse…"></textarea><button class="button button-primary small-button">Envoyer</button></form>`:""}${replies.map(r=>`<div class="reply"><div class="comment-author">${esc(r.author_name)}</div><div class="comment-text">${esc(r.body)}</div>${isAdmin()?`<button class="text-button" onclick="deleteComment('${r.id}')">Supprimer</button>`:""}</div>`).join("")}</div>`;
 }
 window.showReply=id=>$(`reply-form-${id}`).classList.toggle("hidden");
 window.addComment=async(e,articleId)=>{e.preventDefault();const body=$(`new-comment-${articleId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Commentaire publié.");loadArticles()}};
@@ -62,7 +63,7 @@ async function loadPolls(){
   const all=responses||[];
   $("polls").innerHTML=polls.map(p=>{
     const rs=all.filter(r=>r.poll_id===p.id),mine=rs.find(r=>r.user_id===currentUser?.id),total=rs.length;
-    return `<div class="poll"><h3>${esc(p.question)}</h3>${p.options.map((opt,i)=>{const count=rs.filter(r=>r.option_index===i).length;return `<label class="poll-option"><input type="radio" name="poll-${p.id}" value="${i}" ${mine?.option_index===i?"checked":""} ${!currentUser||!p.active||mine?"disabled":""}><span>${esc(opt)}</span>${mine||!p.active?`<span class="poll-results"><span style="width:${total?count/total*100:0}%"></span></span><span>${count}</span>`:""}</label>`}).join("")}${currentUser&&p.active&&!mine?`<button class="button button-primary small-button" onclick="castVote('${p.id}')">Voter</button>`:""}<div class="poll-meta">${total} vote(s) · ${p.active?"Vote ouvert":"Vote clôturé"}${mine?" · Vous avez voté":""}</div>${isAdmin()?`<button class="text-button" onclick="togglePoll('${p.id}',${!p.active})">${p.active?"Clôturer":"Rouvrir"} le vote</button>`:""}</div>`;
+    return `<div class="poll"><h3>${esc(p.question)}</h3>${p.options.map((opt,i)=>{const count=rs.filter(r=>r.option_index===i).length;return `<label class="poll-option"><input type="radio" name="poll-${p.id}" value="${i}" ${mine?.option_index===i?"checked":""} ${!isMember()||!p.active||mine?"disabled":""}><span>${esc(opt)}</span>${mine||!p.active?`<span class="poll-results"><span style="width:${total?count/total*100:0}%"></span></span><span>${count}</span>`:""}</label>`}).join("")}${isMember()&&p.active&&!mine?`<button class="button button-primary small-button" onclick="castVote('${p.id}')">Voter</button>`:""}<div class="poll-meta">${total} vote(s) · ${p.active?"Vote ouvert":"Vote clôturé"}${mine?" · Vous avez voté":""}</div>${isAdmin()?`<button class="text-button" onclick="togglePoll('${p.id}',${!p.active})">${p.active?"Clôturer":"Rouvrir"} le vote</button>`:""}</div>`;
   }).join("");
 }
 window.castVote=async(id)=>{const selected=document.querySelector(`input[name="poll-${id}"]:checked`);if(!selected)return toast("Choisissez une réponse.");const {error}=await sb.from("poll_responses").insert({poll_id:id,user_id:currentUser.id,option_index:Number(selected.value)});if(error)toast(error.message);else{toast("Vote enregistré.");loadPolls()}};
@@ -75,12 +76,49 @@ $("login-form").addEventListener("submit",async e=>{
   $("login-error").textContent="";
   const nickname=$("nickname").value.trim(),code=$("member-code").value;
   if(nickname.length<2)return $("login-error").textContent="Le pseudonyme doit contenir au moins 2 caractères.";
+
   let {data:{session}}=await sb.auth.getSession();
-  if(!session){const {data,error}=await sb.auth.signInAnonymously();if(error)return $("login-error").textContent=error.message;session=data.session}
+  let anonymousSession=false;
+  if(!session){
+    const {data,error}=await sb.auth.signInAnonymously();
+    if(error)return $("login-error").textContent=error.message;
+    session=data.session;
+    anonymousSession=true;
+  } else {
+    anonymousSession=!!session.user?.is_anonymous;
+  }
+
   const {data,error}=await sb.functions.invoke("join-community",{body:{nickname,code}});
-  if(error||!data?.ok){$("login-error").textContent=data?.error||error?.message||"Accès refusé.";return}
-  currentUser=(await sb.auth.getUser()).data.user;currentProfile={nickname:data.nickname,role:data.role};
-  $("login-dialog").close();$("member-code").value="";updateHeader();renderAdminTools();loadArticles();loadPolls();toast("Bienvenue, "+nickname+" !");
+  if(error||!data?.ok){
+    let serverMessage=data?.error;
+    if(!serverMessage&&error?.context&&typeof error.context.clone==="function"){
+      try{
+        const details=await error.context.clone().json();
+        serverMessage=details?.error;
+      }catch(_){}
+    }
+    $("login-error").textContent=serverMessage||"Inscription impossible. Vérifiez le code membre et réessayez.";
+    if(anonymousSession){
+      await sb.auth.signOut();
+      currentUser=null;
+      currentProfile=null;
+      updateHeader();
+      renderAdminTools();
+      loadArticles();
+      loadPolls();
+    }
+    return;
+  }
+
+  currentUser=(await sb.auth.getUser()).data.user;
+  currentProfile={nickname:data.nickname,role:data.role};
+  $("login-dialog").close();
+  $("member-code").value="";
+  updateHeader();
+  renderAdminTools();
+  loadArticles();
+  loadPolls();
+  toast("Bienvenue, "+nickname+" !");
 });
 $("logout").addEventListener("click",async()=>{if(!sb)return;await sb.auth.signOut();currentUser=null;currentProfile=null;updateHeader();renderAdminTools();loadArticles();loadPolls();toast("Déconnexion effectuée.")});
 
