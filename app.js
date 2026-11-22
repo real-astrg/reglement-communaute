@@ -13,6 +13,7 @@ function toast(message){const el=$("toast");el.textContent=message;el.classList.
 function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function requireConfig(){if(!sb){toast("Le site doit d'abord être configuré avec Supabase.");return false}return true}
 function isAdmin(){return currentProfile?.role==="admin"}
+function isMember(){return currentProfile?.role==="member"||isAdmin()}
 function dateLabel(value){return new Date(value).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}
 
 async function loadSession(){
