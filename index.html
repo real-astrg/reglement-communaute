@@ -54,7 +54,7 @@
         </section>
       </section>
     </div>
-    <footer>Règlement de la communauté <span>·</span> Espace indépendant</footer>
+    <footer>Règlement de la communauté <span>·</span> Espace indépendant <span>·</span> <button type="button" id="admin-login-open" class="footer-link">Accès admin</button></footer>
   </main>
 
   <dialog id="login-dialog" class="dialog">
@@ -70,6 +70,21 @@
       <button class="button button-primary full-width" type="submit">Entrer</button>
       <p id="login-error" class="error" role="alert"></p>
       <p class="fine-print">Le code commun ne permet pas d'identifier individuellement les membres. Évitez d'utiliser un mot de passe personnel important.</p>
+    </form>
+  </dialog>
+
+  <dialog id="admin-dialog" class="dialog">
+    <form id="admin-login-form" method="dialog">
+      <button type="button" class="dialog-close" id="admin-login-close" aria-label="Fermer">×</button>
+      <div class="eyebrow dark-eyebrow">ADMINISTRATION</div>
+      <h2>Connexion administrateur</h2>
+      <p class="muted">Réservé aux administrateurs du site.</p>
+      <label for="admin-email">Adresse e-mail</label>
+      <input id="admin-email" type="email" required autocomplete="username" placeholder="votre@email.fr">
+      <label for="admin-password">Mot de passe</label>
+      <input id="admin-password" type="password" required autocomplete="current-password" placeholder="Votre mot de passe">
+      <button class="button button-primary full-width" type="submit">Se connecter</button>
+      <p id="admin-login-error" class="error" role="alert"></p>
     </form>
   </dialog>
 
