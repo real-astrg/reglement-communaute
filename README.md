@@ -130,4 +130,4 @@ Les versions publiées sont listées dans l'onglet **Releases** du dépôt.
 
 ## Licence
 
-À définir par l'auteur du projet.
+À définir ....
