@@ -130,4 +130,4 @@ Les versions publiées sont listées dans l'onglet **Releases** du dépôt.
 
 ## Licence
 
-À définir ....
+Ce projet est publié sous licence [MIT](LICENSE).
