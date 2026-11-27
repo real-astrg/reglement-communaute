@@ -1,4 +1,3 @@
-
 /* Configurez ces deux valeurs après avoir créé votre projet Supabase. */
 const SUPABASE_URL = "https://jbpvjcjdbfiaeyfyjlnz.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qP2j0XgSeZOjaYytKSWVXg_Qp89T4DZ";
@@ -28,6 +27,7 @@ function updateHeader(){
   $("session-label").textContent=currentProfile?.nickname ? `${currentProfile.nickname}${isAdmin()?" · Admin":""}` : "Visiteur";
   $("login-open").classList.toggle("hidden",isMember());
   $("logout").classList.toggle("hidden",!isMember());
+  $("admin-login-open").classList.toggle("hidden",isAdmin());
 }
 function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin())}
 
@@ -121,5 +121,37 @@ $("login-form").addEventListener("submit",async e=>{
   toast("Bienvenue, "+nickname+" !");
 });
 $("logout").addEventListener("click",async()=>{if(!sb)return;await sb.auth.signOut();currentUser=null;currentProfile=null;updateHeader();renderAdminTools();loadArticles();loadPolls();toast("Déconnexion effectuée.")});
+
+/* ---- Connexion administrateur (e-mail + mot de passe) ---- */
+$("admin-login-open").addEventListener("click",()=>{if(!requireConfig())return;$("admin-login-error").textContent="";$("admin-dialog").showModal()});
+$("admin-login-close").addEventListener("click",()=>$("admin-dialog").close());
+$("admin-login-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!requireConfig())return;
+  $("admin-login-error").textContent="";
+  const email=$("admin-email").value.trim(),password=$("admin-password").value;
+  if(!email||!password)return $("admin-login-error").textContent="Saisissez l'e-mail et le mot de passe.";
+
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error||!data?.user)return $("admin-login-error").textContent="Connexion impossible. Vérifiez l'e-mail et le mot de passe.";
+
+  /* Le rôle vient toujours de la base de données, jamais du navigateur. */
+  const {data:profile}=await sb.from("profiles").select("nickname,role").eq("id",data.user.id).maybeSingle();
+  if(profile?.role!=="admin"){
+    await sb.auth.signOut();
+    currentUser=null;currentProfile=null;
+    updateHeader();renderAdminTools();loadArticles();loadPolls();
+    return $("admin-login-error").textContent="Ce compte n'a pas les droits d'administration.";
+  }
+
+  currentUser=data.user;
+  currentProfile=profile;
+  $("admin-password").value="";
+  $("admin-dialog").close();
+  updateHeader();
+  renderAdminTools();
+  loadArticles();
+  loadPolls();
+  toast("Connecté en tant qu'administrateur.");
+});
 
 (async()=>{if(!configured){loadArticles();loadPolls();$("login-open").textContent="Configuration requise";return}await loadSession();await loadArticles();await loadPolls()})();
