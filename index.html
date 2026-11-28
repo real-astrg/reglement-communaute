@@ -4,119 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17243a">
-  <title>Règlement de la communauté</title>
+  <meta name="description" content="Brain Not Found : le site de la communauté.">
+  <title>Brain Not Found</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#"><span class="brand-mark">R</span><span>LE RÈGLEMENT</span></a>
-    <div class="top-actions">
-      <span id="session-label" class="session-label">Visiteur</span>
-      <button id="login-open" class="button button-light">Espace membre</button>
-      <button id="logout" class="button button-light hidden">Déconnexion</button>
-    </div>
-  </header>
-
   <main class="shell">
     <section class="hero">
-      <div class="eyebrow">DOCUMENT OFFICIEL · COMMUNAUTÉ</div>
-      <h1>Règlement de la communauté</h1>
-      <p>Les règles communes, clairement présentées. Consultez les articles et participez aux discussions.</p>
-      <div class="hero-meta"><span class="status-dot"></span> Consultation publique <span class="meta-separator">·</span> Commentaires réservés aux membres</div>
+      <div class="eyebrow">COMMUNAUTÉ</div>
+      <h1>Brain Not Found</h1>
+      <p>Le site de la communauté. Retrouvez le règlement et, bientôt, les activités.</p>
+      <div class="hero-meta"><span class="status-dot"></span> Consultation publique <span class="meta-separator">·</span> Participation réservée aux membres</div>
     </section>
 
-    <div class="content-grid">
-      <aside class="sidebar">
-        <div class="panel">
-          <h2>Sommaire</h2>
-          <nav id="toc" class="toc"><p class="muted">Chargement…</p></nav>
-        </div>
-        <div class="panel note-panel">
-          <div class="note-icon">i</div>
-          <div><strong>Comment participer ?</strong><p>Connectez-vous avec votre pseudonyme pour commenter et voter. À la première connexion, le code membre est demandé.</p></div>
-        </div>
-      </aside>
-
-      <section class="main-column">
-        <div id="articles" class="articles"><div class="loading">Chargement du règlement…</div></div>
-        <section id="polls-section" class="panel polls-panel">
-          <div class="section-heading"><div><div class="eyebrow dark-eyebrow">PARTICIPATION</div><h2>Votes de la communauté</h2></div><span class="lock-label">Création réservée aux admins</span></div>
-          <div id="polls"><p class="muted">Chargement des votes…</p></div>
-          <div id="admin-poll-form" class="admin-form hidden">
-            <h3>Créer un vote</h3>
-            <label for="poll-title">Question</label>
-            <input id="poll-title" maxlength="180" placeholder="Ex. : Faut-il ajouter une règle sur… ?">
-            <label>Choix proposés (un par ligne)</label>
-            <textarea id="poll-options" rows="3" placeholder="Oui&#10;Non&#10;Sans avis"></textarea>
-            <button id="poll-create" class="button button-primary">Créer le vote</button>
-          </div>
-        </section>
-        <section id="admin-members" class="panel polls-panel hidden">
-          <div class="section-heading"><div><div class="eyebrow dark-eyebrow">ADMINISTRATION</div><h2>Membres</h2></div><span id="members-count" class="lock-label"></span></div>
-          <div id="members-list"></div>
-        </section>
-      </section>
+    <h2 class="section-title">MODULES</h2>
+    <div class="modules">
+      <a class="module-card" href="reglement.html">
+        <div class="module-icon">R</div>
+        <h2>Règlement</h2>
+        <p>Les règles de la communauté, article par article, avec commentaires et votes.</p>
+        <span class="module-tag">DISPONIBLE</span>
+      </a>
+      <div class="module-card is-soon">
+        <div class="module-icon">S</div>
+        <h2>Secret Santa</h2>
+        <p>L'échange de cadeaux de la communauté. Inscription et tirage au sort.</p>
+        <span class="module-tag">BIENTÔT</span>
+      </div>
     </div>
-    <footer>Règlement de la communauté <span>·</span> Espace indépendant <span>·</span> <button type="button" id="admin-login-open" class="footer-link">Accès admin</button></footer>
   </main>
 
-  <dialog id="login-dialog" class="dialog">
-    <div class="dialog-shell">
-      <button type="button" class="dialog-close" id="login-close" aria-label="Fermer">×</button>
-      <div class="dialog-tabs">
-        <button type="button" id="tab-first" class="dialog-tab active">Première connexion</button>
-        <button type="button" id="tab-signin" class="dialog-tab">J'ai déjà un compte</button>
-      </div>
-
-      <form id="login-form" method="dialog">
-        <div class="eyebrow dark-eyebrow">ESPACE MEMBRE</div>
-        <h2>Rejoindre la communauté</h2>
-        <p class="muted">Choisissez un pseudonyme, saisissez le code membre partagé par les administrateurs, puis créez votre mot de passe personnel.</p>
-        <label for="nickname">Pseudonyme</label>
-        <input id="nickname" maxlength="32" required autocomplete="username" placeholder="Votre pseudonyme">
-        <label for="member-code">Code membre</label>
-        <input id="member-code" type="password" required autocomplete="off" placeholder="Code communiqué par les admins">
-        <label for="new-password">Mot de passe (8 caractères minimum)</label>
-        <input id="new-password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="Votre mot de passe personnel">
-        <label for="new-password2">Confirmer le mot de passe</label>
-        <input id="new-password2" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="Retapez le mot de passe">
-        <button class="button button-primary full-width" type="submit">Créer mon compte</button>
-        <p id="login-error" class="error" role="alert"></p>
-        <p class="fine-print">Le code ne sert qu'à la première connexion. Ensuite, votre pseudonyme et votre mot de passe suffisent. Utilisez un mot de passe que vous n'employez nulle part ailleurs : en cas d'oubli, contactez un administrateur.</p>
-      </form>
-
-      <form id="signin-form" method="dialog" class="hidden">
-        <div class="eyebrow dark-eyebrow">ESPACE MEMBRE</div>
-        <h2>Se connecter</h2>
-        <p class="muted">Saisissez votre pseudonyme et votre mot de passe.</p>
-        <label for="signin-nickname">Pseudonyme</label>
-        <input id="signin-nickname" maxlength="32" required autocomplete="username" placeholder="Votre pseudonyme">
-        <label for="signin-password">Mot de passe</label>
-        <input id="signin-password" type="password" required maxlength="72" autocomplete="current-password" placeholder="Votre mot de passe">
-        <button class="button button-primary full-width" type="submit">Se connecter</button>
-        <p id="signin-error" class="error" role="alert"></p>
-        <p class="fine-print">Première visite ? Utilisez l'onglet « Première connexion ». Mot de passe oublié ? Contactez un administrateur.</p>
-      </form>
-    </div>
-  </dialog>
-
-  <dialog id="admin-dialog" class="dialog">
-    <form id="admin-login-form" method="dialog">
-      <button type="button" class="dialog-close" id="admin-login-close" aria-label="Fermer">×</button>
-      <div class="eyebrow dark-eyebrow">ADMINISTRATION</div>
-      <h2>Connexion administrateur</h2>
-      <p class="muted">Réservé aux administrateurs du site.</p>
-      <label for="admin-email">Adresse e-mail</label>
-      <input id="admin-email" type="email" required autocomplete="username" placeholder="votre@email.fr">
-      <label for="admin-password">Mot de passe</label>
-      <input id="admin-password" type="password" required autocomplete="current-password" placeholder="Votre mot de passe">
-      <button class="button button-primary full-width" type="submit">Se connecter</button>
-      <p id="admin-login-error" class="error" role="alert"></p>
-    </form>
-  </dialog>
-
-  <div id="toast" class="toast" role="status"></div>
-  <script src="app.js"></script>
+  <script src="common.js"></script>
 </body>
 </html>
