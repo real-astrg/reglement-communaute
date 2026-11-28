@@ -1,0 +1,59 @@
+/* Brain Not Found : module Règlement (articles, commentaires, sondages, liste des membres). */
+let articleCache = [];
+
+function dateLabel(value){return new Date(value).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}
+function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin());loadMembers()}
+
+async function loadMembers(){
+  const box=$("admin-members");
+  if(!sb||!isAdmin()){box.classList.add("hidden");$("members-list").innerHTML="";return}
+  box.classList.remove("hidden");
+  const {data,error}=await sb.from("profiles").select("id,nickname,role,created_at").order("created_at",{ascending:false});
+  if(error){$("members-list").innerHTML=`<p class="error">${esc(error.message)}</p>`;return}
+  const rows=data||[];
+  $("members-count").textContent=`${rows.length} profil(s)`;
+  $("members-list").innerHTML=rows.map(m=>`<div class="member-row"><span class="member-name">${esc(m.nickname)}${m.role==="admin"?' <span class="role-tag">Admin</span>':""}</span><span class="member-date">${new Date(m.created_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})}</span></div>`).join("")||'<p class="muted">Aucun membre.</p>';
+}
+
+async function loadArticles(){
+  if(!sb){$("articles").innerHTML='<div class="panel"><strong>Configuration nécessaire</strong><p class="muted">Suivez le guide README pour connecter Supabase. Les articles apparaîtront ici ensuite.</p></div>';return}
+  const {data,error}=await sb.from("articles").select("id,number,title,body").order("number");
+  if(error){$("articles").innerHTML=`<p class="error">${esc(error.message)}</p>`;return}
+  articleCache=data||[];
+  $("toc").innerHTML=articleCache.map(a=>`<a href="#article-${a.id}">${esc(a.number)}. ${esc(a.title)}</a>`).join("")||'<p class="muted">Aucun article publié.</p>';
+  const {data:comments}=await sb.from("comments").select("id,article_id,author_name,body,created_at,parent_id").order("created_at");
+  const all=comments||[];
+  $("articles").innerHTML=articleCache.map(a=>{
+    const roots=all.filter(c=>c.article_id===a.id&&!c.parent_id);
+    return `<article class="article-card" id="article-${a.id}"><div class="article-layout"><div><div class="article-number">ARTICLE ${esc(a.number)}</div><h2>${esc(a.title)}</h2><div class="article-body">${esc(a.body)}</div>${isAdmin()?`<details class="admin-form"><summary class="text-button">Modifier cet article</summary><label>Titre</label><input id="title-${a.id}" value="${esc(a.title)}"><label>Texte</label><textarea id="body-${a.id}" rows="4">${esc(a.body)}</textarea><button class="button button-primary small-button" onclick="saveArticle('${a.id}')">Enregistrer</button></details>`:""}</div><aside class="comment-rail"><div class="comment-head"><span>COMMENTAIRES</span><span class="comment-count">${roots.length}</span></div><div>${roots.map(c=>commentHTML(c,all)).join("")||'<p class="empty">Aucun commentaire pour le moment.</p>'}</div>${isMember()?`<form class="comment-form" onsubmit="addComment(event,'${a.id}')"><textarea id="new-comment-${a.id}" rows="2" maxlength="2000" required placeholder="Votre remarque sur cet article…"></textarea><button class="button button-primary small-button">Commenter</button></form>`:'<p class="muted">Connectez-vous pour commenter.</p>'}</aside></div></article>`;
+  }).join("");
+}
+function commentHTML(c,all){
+  const replies=all.filter(r=>r.parent_id===c.id);
+  return `<div class="comment"><div><span class="comment-author">${esc(c.author_name)}</span><span class="comment-date">${dateLabel(c.created_at)}</span></div><div class="comment-text">${esc(c.body)}</div>${isMember()?`<div class="comment-actions"><button class="text-button" onclick="showReply('${c.id}')">Répondre</button>${isAdmin()?`<button class="text-button" onclick="deleteComment('${c.id}')">Supprimer</button>`:""}</div><form id="reply-form-${c.id}" class="comment-form hidden" onsubmit="addReply(event,'${c.article_id}','${c.id}')"><textarea id="reply-text-${c.id}" rows="2" maxlength="2000" required placeholder="Votre réponse…"></textarea><button class="button button-primary small-button">Envoyer</button></form>`:""}${replies.map(r=>`<div class="reply"><div class="comment-author">${esc(r.author_name)}</div><div class="comment-text">${esc(r.body)}</div>${isAdmin()?`<button class="text-button" onclick="deleteComment('${r.id}')">Supprimer</button>`:""}</div>`).join("")}</div>`;
+}
+window.showReply=id=>$(`reply-form-${id}`).classList.toggle("hidden");
+window.addComment=async(e,articleId)=>{e.preventDefault();if(!ensureUser())return;const body=$(`new-comment-${articleId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Commentaire publié.");loadArticles()}};
+window.addReply=async(e,articleId,parentId)=>{e.preventDefault();if(!ensureUser())return;const body=$(`reply-text-${parentId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,parent_id:parentId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Réponse publiée.");loadArticles()}};
+window.deleteComment=async(id)=>{if(!isAdmin()||!confirm("Supprimer ce commentaire ?"))return;const {error}=await sb.from("comments").delete().eq("id",id);if(error)toast(error.message);else{toast("Commentaire supprimé.");loadArticles()}};
+window.saveArticle=async(id)=>{if(!isAdmin())return;const title=$(`title-${id}`).value.trim(),body=$(`body-${id}`).value.trim();const {error}=await sb.from("articles").update({title,body}).eq("id",id);if(error)toast(error.message);else{toast("Article mis à jour.");loadArticles()}};
+
+async function loadPolls(){
+  if(!sb){$("polls").innerHTML='<p class="muted">Les votes apparaîtront après configuration.</p>';return}
+  const {data:polls,error}=await sb.from("polls").select("id,question,options,active,created_at").order("created_at",{ascending:false});
+  if(error){$("polls").innerHTML=`<p class="error">${esc(error.message)}</p>`;return}
+  if(!polls?.length){$("polls").innerHTML='<p class="muted">Aucun vote proposé pour le moment.</p>';return}
+  const {data:responses}=await sb.from("poll_responses").select("poll_id,option_index,user_id");
+  const all=responses||[];
+  $("polls").innerHTML=polls.map(p=>{
+    const rs=all.filter(r=>r.poll_id===p.id),mine=rs.find(r=>r.user_id===currentUser?.id),total=rs.length;
+    return `<div class="poll"><h3>${esc(p.question)}</h3>${p.options.map((opt,i)=>{const count=rs.filter(r=>r.option_index===i).length;return `<label class="poll-option"><input type="radio" name="poll-${p.id}" value="${i}" ${mine?.option_index===i?"checked":""} ${!isMember()||!p.active||mine?"disabled":""}><span>${esc(opt)}</span>${mine||!p.active?`<span class="poll-results"><span style="width:${total?count/total*100:0}%"></span></span><span>${count}</span>`:""}</label>`}).join("")}${isMember()&&p.active&&!mine?`<button class="button button-primary small-button" onclick="castVote('${p.id}')">Voter</button>`:""}<div class="poll-meta">${total} vote(s) · ${p.active?"Vote ouvert":"Vote clôturé"}${mine?" · Vous avez voté":""}</div>${isAdmin()?`<button class="text-button" onclick="togglePoll('${p.id}',${!p.active})">${p.active?"Clôturer":"Rouvrir"} le vote</button>`:""}</div>`;
+  }).join("");
+}
+window.castVote=async(id)=>{if(!ensureUser())return;const selected=document.querySelector(`input[name="poll-${id}"]:checked`);if(!selected)return toast("Choisissez une réponse.");const {error}=await sb.from("poll_responses").insert({poll_id:id,user_id:currentUser.id,option_index:Number(selected.value)});if(error)toast(error.message);else{toast("Vote enregistré.");loadPolls()}};
+window.togglePoll=async(id,active)=>{if(!isAdmin())return;const {error}=await sb.from("polls").update({active}).eq("id",id);if(error)toast(error.message);else loadPolls()};
+$("poll-create").addEventListener("click",async()=>{if(!isAdmin())return;const question=$("poll-title").value.trim(),options=$("poll-options").value.split("\n").map(x=>x.trim()).filter(Boolean);if(!question||options.length<2)return toast("Ajoutez une question et au moins deux choix.");const {error}=await sb.from("polls").insert({question,options,created_by:currentUser.id});if(error)toast(error.message);else{$("poll-title").value="";$("poll-options").value="";toast("Vote créé.");loadPolls()}});
+
+/* Redessine la page après une connexion ou une déconnexion (appelé par common.js). */
+window.pageRefresh=()=>{renderAdminTools();loadArticles();loadPolls()};
+sessionReady.then(()=>window.pageRefresh());
