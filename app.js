@@ -29,7 +29,17 @@ function updateHeader(){
   $("logout").classList.toggle("hidden",!isMember());
   $("admin-login-open").classList.toggle("hidden",isAdmin());
 }
-function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin())}
+function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin());loadMembers()}
+async function loadMembers(){
+  const box=$("admin-members");
+  if(!sb||!isAdmin()){box.classList.add("hidden");$("members-list").innerHTML="";return}
+  box.classList.remove("hidden");
+  const {data,error}=await sb.from("profiles").select("id,nickname,role,created_at").order("created_at",{ascending:false});
+  if(error){$("members-list").innerHTML=`<p class="error">${esc(error.message)}</p>`;return}
+  const rows=data||[];
+  $("members-count").textContent=`${rows.length} profil(s)`;
+  $("members-list").innerHTML=rows.map(m=>`<div class="member-row"><span class="member-name">${esc(m.nickname)}${m.role==="admin"?' <span class="role-tag">Admin</span>':""}</span><span class="member-date">${new Date(m.created_at).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"numeric"})}</span></div>`).join("")||'<p class="muted">Aucun membre.</p>';
+}
 function refreshAll(){updateHeader();renderAdminTools();loadArticles();loadPolls()}
 
 async function loadArticles(){
