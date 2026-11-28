@@ -30,6 +30,7 @@ function updateHeader(){
   $("admin-login-open").classList.toggle("hidden",isAdmin());
 }
 function renderAdminTools(){$("admin-poll-form").classList.toggle("hidden",!isAdmin())}
+function refreshAll(){updateHeader();renderAdminTools();loadArticles();loadPolls()}
 
 async function loadArticles(){
   if(!sb){$("articles").innerHTML='<div class="panel"><strong>Configuration nécessaire</strong><p class="muted">Suivez le guide README pour connecter Supabase. Les articles apparaîtront ici ensuite.</p></div>';return}
@@ -69,26 +70,39 @@ async function loadPolls(){
 window.castVote=async(id)=>{const selected=document.querySelector(`input[name="poll-${id}"]:checked`);if(!selected)return toast("Choisissez une réponse.");const {error}=await sb.from("poll_responses").insert({poll_id:id,user_id:currentUser.id,option_index:Number(selected.value)});if(error)toast(error.message);else{toast("Vote enregistré.");loadPolls()}};
 window.togglePoll=async(id,active)=>{if(!isAdmin())return;const {error}=await sb.from("polls").update({active}).eq("id",id);if(error)toast(error.message);else loadPolls()};
 $("poll-create").addEventListener("click",async()=>{if(!isAdmin())return;const question=$("poll-title").value.trim(),options=$("poll-options").value.split("\n").map(x=>x.trim()).filter(Boolean);if(!question||options.length<2)return toast("Ajoutez une question et au moins deux choix.");const {error}=await sb.from("polls").insert({question,options,created_by:currentUser.id});if(error)toast(error.message);else{$("poll-title").value="";$("poll-options").value="";toast("Vote créé.");loadPolls()}});
-$("login-open").addEventListener("click",()=>{if(!requireConfig())return;$("login-dialog").showModal()});
+
+/* ---- Fenêtre membre : deux onglets ---- */
+function setLoginTab(tab){
+  const first=tab==="first";
+  $("login-form").classList.toggle("hidden",!first);
+  $("signin-form").classList.toggle("hidden",first);
+  $("tab-first").classList.toggle("active",first);
+  $("tab-signin").classList.toggle("active",!first);
+}
+$("tab-first").addEventListener("click",()=>setLoginTab("first"));
+$("tab-signin").addEventListener("click",()=>setLoginTab("signin"));
+$("login-open").addEventListener("click",()=>{if(!requireConfig())return;$("login-error").textContent="";$("signin-error").textContent="";setLoginTab("first");$("login-dialog").showModal()});
 $("login-close").addEventListener("click",()=>$("login-dialog").close());
+
+/* ---- Première connexion : pseudonyme + code commun + création du mot de passe ---- */
 $("login-form").addEventListener("submit",async e=>{
   e.preventDefault();if(!requireConfig())return;
   $("login-error").textContent="";
-  const nickname=$("nickname").value.trim(),code=$("member-code").value;
+  const nickname=$("nickname").value.trim(),code=$("member-code").value,password=$("new-password").value,confirmation=$("new-password2").value;
   if(nickname.length<2)return $("login-error").textContent="Le pseudonyme doit contenir au moins 2 caractères.";
+  if(password.length<8)return $("login-error").textContent="Le mot de passe doit contenir au moins 8 caractères.";
+  if(password!==confirmation)return $("login-error").textContent="Les deux mots de passe ne correspondent pas.";
 
   let {data:{session}}=await sb.auth.getSession();
-  let anonymousSession=false;
+  let createdHere=false;
   if(!session){
     const {data,error}=await sb.auth.signInAnonymously();
     if(error)return $("login-error").textContent=error.message;
     session=data.session;
-    anonymousSession=true;
-  } else {
-    anonymousSession=!!session.user?.is_anonymous;
+    createdHere=true;
   }
 
-  const {data,error}=await sb.functions.invoke("join-community",{body:{nickname,code}});
+  const {data,error}=await sb.functions.invoke("join-community",{body:{nickname,code,password}});
   if(error||!data?.ok){
     let serverMessage=data?.error;
     if(!serverMessage&&error?.context&&typeof error.context.clone==="function"){
@@ -98,14 +112,11 @@ $("login-form").addEventListener("submit",async e=>{
       }catch(_){}
     }
     $("login-error").textContent=serverMessage||"Inscription impossible. Vérifiez le code membre et réessayez.";
-    if(anonymousSession){
+    if(createdHere){
       await sb.auth.signOut();
       currentUser=null;
       currentProfile=null;
-      updateHeader();
-      renderAdminTools();
-      loadArticles();
-      loadPolls();
+      refreshAll();
     }
     return;
   }
@@ -114,13 +125,48 @@ $("login-form").addEventListener("submit",async e=>{
   currentProfile={nickname:data.nickname,role:data.role};
   $("login-dialog").close();
   $("member-code").value="";
-  updateHeader();
-  renderAdminTools();
-  loadArticles();
-  loadPolls();
-  toast("Bienvenue, "+nickname+" !");
+  $("new-password").value="";
+  $("new-password2").value="";
+  refreshAll();
+  toast("Bienvenue, "+nickname+" ! Retenez votre mot de passe pour vous reconnecter.");
 });
-$("logout").addEventListener("click",async()=>{if(!sb)return;await sb.auth.signOut();currentUser=null;currentProfile=null;updateHeader();renderAdminTools();loadArticles();loadPolls();toast("Déconnexion effectuée.")});
+
+/* ---- Connexion habituelle : pseudonyme + mot de passe ---- */
+$("signin-form").addEventListener("submit",async e=>{
+  e.preventDefault();if(!requireConfig())return;
+  $("signin-error").textContent="";
+  const nickname=$("signin-nickname").value.trim(),password=$("signin-password").value;
+  if(nickname.length<2||!password)return $("signin-error").textContent="Saisissez votre pseudonyme et votre mot de passe.";
+
+  /* Un appel à la fonction serveur demande une session, même vide : on en crée une si besoin. */
+  let {data:{session}}=await sb.auth.getSession();
+  if(!session){
+    const {error}=await sb.auth.signInAnonymously();
+    if(error)return $("signin-error").textContent="Connexion impossible pour le moment. Réessayez dans un instant.";
+  }
+
+  const {data:found,error:lookupError}=await sb.functions.invoke("join-community",{body:{action:"lookup",nickname}});
+  if(lookupError||!found?.email)return $("signin-error").textContent="Connexion impossible pour le moment. Réessayez dans un instant.";
+
+  const {data,error}=await sb.auth.signInWithPassword({email:found.email,password});
+  if(error||!data?.user)return $("signin-error").textContent="Pseudonyme ou mot de passe incorrect.";
+
+  const {data:profile}=await sb.from("profiles").select("nickname,role").eq("id",data.user.id).maybeSingle();
+  if(!profile){
+    await sb.auth.signOut();
+    currentUser=null;currentProfile=null;refreshAll();
+    return $("signin-error").textContent="Compte introuvable. Utilisez l'onglet « Première connexion ».";
+  }
+
+  currentUser=data.user;
+  currentProfile=profile;
+  $("signin-password").value="";
+  $("login-dialog").close();
+  refreshAll();
+  toast("Bienvenue, "+profile.nickname+" !");
+});
+
+$("logout").addEventListener("click",async()=>{if(!sb)return;await sb.auth.signOut();currentUser=null;currentProfile=null;refreshAll();toast("Déconnexion effectuée.")});
 
 /* ---- Connexion administrateur (e-mail + mot de passe) ---- */
 $("admin-login-open").addEventListener("click",()=>{if(!requireConfig())return;$("admin-login-error").textContent="";$("admin-dialog").showModal()});
@@ -139,7 +185,7 @@ $("admin-login-form").addEventListener("submit",async e=>{
   if(profile?.role!=="admin"){
     await sb.auth.signOut();
     currentUser=null;currentProfile=null;
-    updateHeader();renderAdminTools();loadArticles();loadPolls();
+    refreshAll();
     return $("admin-login-error").textContent="Ce compte n'a pas les droits d'administration.";
   }
 
@@ -147,10 +193,7 @@ $("admin-login-form").addEventListener("submit",async e=>{
   currentProfile=profile;
   $("admin-password").value="";
   $("admin-dialog").close();
-  updateHeader();
-  renderAdminTools();
-  loadArticles();
-  loadPolls();
+  refreshAll();
   toast("Connecté en tant qu'administrateur.");
 });
 
