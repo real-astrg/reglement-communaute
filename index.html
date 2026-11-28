@@ -34,7 +34,7 @@
         </div>
         <div class="panel note-panel">
           <div class="note-icon">i</div>
-          <div><strong>Comment participer ?</strong><p>Connectez-vous avec votre pseudonyme et le code membre pour commenter et voter.</p></div>
+          <div><strong>Comment participer ?</strong><p>Connectez-vous avec votre pseudonyme pour commenter et voter. À la première connexion, le code membre est demandé.</p></div>
         </div>
       </aside>
 
@@ -58,19 +58,43 @@
   </main>
 
   <dialog id="login-dialog" class="dialog">
-    <form id="login-form" method="dialog">
+    <div class="dialog-shell">
       <button type="button" class="dialog-close" id="login-close" aria-label="Fermer">×</button>
-      <div class="eyebrow dark-eyebrow">ESPACE MEMBRE</div>
-      <h2>Participer à la communauté</h2>
-      <p class="muted">Choisissez un pseudonyme et saisissez le code membre partagé par les administrateurs.</p>
-      <label for="nickname">Pseudonyme</label>
-      <input id="nickname" maxlength="32" required autocomplete="nickname" placeholder="Votre pseudonyme">
-      <label for="member-code">Code membre</label>
-      <input id="member-code" type="password" required autocomplete="current-password" placeholder="Code communiqué par les admins">
-      <button class="button button-primary full-width" type="submit">Entrer</button>
-      <p id="login-error" class="error" role="alert"></p>
-      <p class="fine-print">Le code commun ne permet pas d'identifier individuellement les membres. Évitez d'utiliser un mot de passe personnel important.</p>
-    </form>
+      <div class="dialog-tabs">
+        <button type="button" id="tab-first" class="dialog-tab active">Première connexion</button>
+        <button type="button" id="tab-signin" class="dialog-tab">J'ai déjà un compte</button>
+      </div>
+
+      <form id="login-form" method="dialog">
+        <div class="eyebrow dark-eyebrow">ESPACE MEMBRE</div>
+        <h2>Rejoindre la communauté</h2>
+        <p class="muted">Choisissez un pseudonyme, saisissez le code membre partagé par les administrateurs, puis créez votre mot de passe personnel.</p>
+        <label for="nickname">Pseudonyme</label>
+        <input id="nickname" maxlength="32" required autocomplete="username" placeholder="Votre pseudonyme">
+        <label for="member-code">Code membre</label>
+        <input id="member-code" type="password" required autocomplete="off" placeholder="Code communiqué par les admins">
+        <label for="new-password">Mot de passe (8 caractères minimum)</label>
+        <input id="new-password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="Votre mot de passe personnel">
+        <label for="new-password2">Confirmer le mot de passe</label>
+        <input id="new-password2" type="password" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="Retapez le mot de passe">
+        <button class="button button-primary full-width" type="submit">Créer mon compte</button>
+        <p id="login-error" class="error" role="alert"></p>
+        <p class="fine-print">Le code ne sert qu'à la première connexion. Ensuite, votre pseudonyme et votre mot de passe suffisent. Utilisez un mot de passe que vous n'employez nulle part ailleurs : en cas d'oubli, contactez un administrateur.</p>
+      </form>
+
+      <form id="signin-form" method="dialog" class="hidden">
+        <div class="eyebrow dark-eyebrow">ESPACE MEMBRE</div>
+        <h2>Se connecter</h2>
+        <p class="muted">Saisissez votre pseudonyme et votre mot de passe.</p>
+        <label for="signin-nickname">Pseudonyme</label>
+        <input id="signin-nickname" maxlength="32" required autocomplete="username" placeholder="Votre pseudonyme">
+        <label for="signin-password">Mot de passe</label>
+        <input id="signin-password" type="password" required maxlength="72" autocomplete="current-password" placeholder="Votre mot de passe">
+        <button class="button button-primary full-width" type="submit">Se connecter</button>
+        <p id="signin-error" class="error" role="alert"></p>
+        <p class="fine-print">Première visite ? Utilisez l'onglet « Première connexion ». Mot de passe oublié ? Contactez un administrateur.</p>
+      </form>
+    </div>
   </dialog>
 
   <dialog id="admin-dialog" class="dialog">
