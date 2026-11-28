@@ -50,8 +50,9 @@ function commentHTML(c,all){
   return `<div class="comment"><div><span class="comment-author">${esc(c.author_name)}</span><span class="comment-date">${dateLabel(c.created_at)}</span></div><div class="comment-text">${esc(c.body)}</div>${isMember()?`<div class="comment-actions"><button class="text-button" onclick="showReply('${c.id}')">Répondre</button>${isAdmin()?`<button class="text-button" onclick="deleteComment('${c.id}')">Supprimer</button>`:""}</div><form id="reply-form-${c.id}" class="comment-form hidden" onsubmit="addReply(event,'${c.article_id}','${c.id}')"><textarea id="reply-text-${c.id}" rows="2" maxlength="2000" required placeholder="Votre réponse…"></textarea><button class="button button-primary small-button">Envoyer</button></form>`:""}${replies.map(r=>`<div class="reply"><div class="comment-author">${esc(r.author_name)}</div><div class="comment-text">${esc(r.body)}</div>${isAdmin()?`<button class="text-button" onclick="deleteComment('${r.id}')">Supprimer</button>`:""}</div>`).join("")}</div>`;
 }
 window.showReply=id=>$(`reply-form-${id}`).classList.toggle("hidden");
-window.addComment=async(e,articleId)=>{e.preventDefault();const body=$(`new-comment-${articleId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Commentaire publié.");loadArticles()}};
-window.addReply=async(e,articleId,parentId)=>{e.preventDefault();const body=$(`reply-text-${parentId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,parent_id:parentId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Réponse publiée.");loadArticles()}};
+function ensureUser(){if(!currentUser){toast("Votre session a expiré. Reconnectez-vous.");return false}return true}
+window.addComment=async(e,articleId)=>{e.preventDefault();if(!ensureUser())return;const body=$(`new-comment-${articleId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Commentaire publié.");loadArticles()}};
+window.addReply=async(e,articleId,parentId)=>{e.preventDefault();if(!ensureUser())return;const body=$(`reply-text-${parentId}`).value.trim();if(!body)return;const {error}=await sb.from("comments").insert({article_id:articleId,parent_id:parentId,author_id:currentUser.id,author_name:currentProfile.nickname,body});if(error)toast(error.message);else{toast("Réponse publiée.");loadArticles()}};
 window.deleteComment=async(id)=>{if(!isAdmin()||!confirm("Supprimer ce commentaire ?"))return;const {error}=await sb.from("comments").delete().eq("id",id);if(error)toast(error.message);else{toast("Commentaire supprimé.");loadArticles()}};
 window.saveArticle=async(id)=>{if(!isAdmin())return;const title=$(`title-${id}`).value.trim(),body=$(`body-${id}`).value.trim();const {error}=await sb.from("articles").update({title,body}).eq("id",id);if(error)toast(error.message);else{toast("Article mis à jour.");loadArticles()}};
 
@@ -67,7 +68,7 @@ async function loadPolls(){
     return `<div class="poll"><h3>${esc(p.question)}</h3>${p.options.map((opt,i)=>{const count=rs.filter(r=>r.option_index===i).length;return `<label class="poll-option"><input type="radio" name="poll-${p.id}" value="${i}" ${mine?.option_index===i?"checked":""} ${!isMember()||!p.active||mine?"disabled":""}><span>${esc(opt)}</span>${mine||!p.active?`<span class="poll-results"><span style="width:${total?count/total*100:0}%"></span></span><span>${count}</span>`:""}</label>`}).join("")}${isMember()&&p.active&&!mine?`<button class="button button-primary small-button" onclick="castVote('${p.id}')">Voter</button>`:""}<div class="poll-meta">${total} vote(s) · ${p.active?"Vote ouvert":"Vote clôturé"}${mine?" · Vous avez voté":""}</div>${isAdmin()?`<button class="text-button" onclick="togglePoll('${p.id}',${!p.active})">${p.active?"Clôturer":"Rouvrir"} le vote</button>`:""}</div>`;
   }).join("");
 }
-window.castVote=async(id)=>{const selected=document.querySelector(`input[name="poll-${id}"]:checked`);if(!selected)return toast("Choisissez une réponse.");const {error}=await sb.from("poll_responses").insert({poll_id:id,user_id:currentUser.id,option_index:Number(selected.value)});if(error)toast(error.message);else{toast("Vote enregistré.");loadPolls()}};
+window.castVote=async(id)=>{if(!ensureUser())return;const selected=document.querySelector(`input[name="poll-${id}"]:checked`);if(!selected)return toast("Choisissez une réponse.");const {error}=await sb.from("poll_responses").insert({poll_id:id,user_id:currentUser.id,option_index:Number(selected.value)});if(error)toast(error.message);else{toast("Vote enregistré.");loadPolls()}};
 window.togglePoll=async(id,active)=>{if(!isAdmin())return;const {error}=await sb.from("polls").update({active}).eq("id",id);if(error)toast(error.message);else loadPolls()};
 $("poll-create").addEventListener("click",async()=>{if(!isAdmin())return;const question=$("poll-title").value.trim(),options=$("poll-options").value.split("\n").map(x=>x.trim()).filter(Boolean);if(!question||options.length<2)return toast("Ajoutez une question et au moins deux choix.");const {error}=await sb.from("polls").insert({question,options,created_by:currentUser.id});if(error)toast(error.message);else{$("poll-title").value="";$("poll-options").value="";toast("Vote créé.");loadPolls()}});
 
@@ -121,7 +122,21 @@ $("login-form").addEventListener("submit",async e=>{
     return;
   }
 
-  currentUser=(await sb.auth.getUser()).data.user;
+  /* Le compte vient d'être modifié côté serveur : on ouvre une session neuve avec le mot de passe choisi. */
+  const {data:fresh,error:freshError}=data.email
+    ? await sb.auth.signInWithPassword({email:data.email,password})
+    : {data:null,error:new Error("no-email")};
+  if(freshError||!fresh?.user){
+    await sb.auth.signOut();
+    currentUser=null;
+    currentProfile=null;
+    refreshAll();
+    setLoginTab("signin");
+    $("signin-nickname").value=nickname;
+    $("signin-error").textContent="Compte créé. Connectez-vous maintenant avec votre pseudonyme et votre mot de passe.";
+    return;
+  }
+  currentUser=fresh.user;
   currentProfile={nickname:data.nickname,role:data.role};
   $("login-dialog").close();
   $("member-code").value="";
