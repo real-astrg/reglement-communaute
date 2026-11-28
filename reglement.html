@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17243a">
+  <title>Règlement · Brain Not Found</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main class="shell">
+    <a class="back-link" href="index.html">← Retour à l'accueil</a>
+
+    <section class="hero">
+      <div class="eyebrow">DOCUMENT OFFICIEL · COMMUNAUTÉ</div>
+      <h1>Règlement de la communauté</h1>
+      <p>Les règles communes, clairement présentées. Consultez les articles et participez aux discussions.</p>
+      <div class="hero-meta"><span class="status-dot"></span> Consultation publique <span class="meta-separator">·</span> Commentaires réservés aux membres</div>
+    </section>
+
+    <div class="content-grid">
+      <aside class="sidebar">
+        <div class="panel">
+          <h2>Sommaire</h2>
+          <nav id="toc" class="toc"><p class="muted">Chargement…</p></nav>
+        </div>
+        <div class="panel note-panel">
+          <div class="note-icon">i</div>
+          <div><strong>Comment participer ?</strong><p>Connectez-vous avec votre pseudonyme pour commenter et voter. À la première connexion, le code membre est demandé.</p></div>
+        </div>
+      </aside>
+
+      <section class="main-column">
+        <div id="articles" class="articles"><div class="loading">Chargement du règlement…</div></div>
+        <section id="polls-section" class="panel polls-panel">
+          <div class="section-heading"><div><div class="eyebrow dark-eyebrow">PARTICIPATION</div><h2>Votes de la communauté</h2></div><span class="lock-label">Création réservée aux admins</span></div>
+          <div id="polls"><p class="muted">Chargement des votes…</p></div>
+          <div id="admin-poll-form" class="admin-form hidden">
+            <h3>Créer un vote</h3>
+            <label for="poll-title">Question</label>
+            <input id="poll-title" maxlength="180" placeholder="Ex. : Faut-il ajouter une règle sur… ?">
+            <label>Choix proposés (un par ligne)</label>
+            <textarea id="poll-options" rows="3" placeholder="Oui&#10;Non&#10;Sans avis"></textarea>
+            <button id="poll-create" class="button button-primary">Créer le vote</button>
+          </div>
+        </section>
+        <section id="admin-members" class="panel polls-panel hidden">
+          <div class="section-heading"><div><div class="eyebrow dark-eyebrow">ADMINISTRATION</div><h2>Membres</h2></div><span id="members-count" class="lock-label"></span></div>
+          <div id="members-list"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="reglement.js"></script>
+</body>
+</html>
